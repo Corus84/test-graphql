@@ -1,13 +1,13 @@
 import { GraphQLID, GraphQLInt, GraphQLList, GraphQLObjectType, GraphQLResolveInfo, GraphQLSchema, GraphQLString } from 'graphql';
 
 const dummyBooks = [
-    { name: 'Name 1', genre: 'Genre 1', id: '1', authourId: '1'},
-    { name: 'Name 2', genre: 'Genre 2', id: '2', authourId: '1'},
-    { name: 'Name 3', genre: 'Genre 1', id: '3', authourId: '2'},
-    { name: 'Name 4', genre: 'Genre 3', id: '4', authourId: '3'},
-    { name: 'Name 5', genre: 'Genre 3', id: '5', authourId: '4'},
-    { name: 'Name 6', genre: 'Genre 3', id: '6', authourId: '3'},
-    { name: 'Name 7', genre: 'Genre 2', id: '7', authourId: '1'}
+    { name: 'Name 1', genre: 'Genre 1', id: '1', authorId: '1'},
+    { name: 'Name 2', genre: 'Genre 2', id: '2', authorId: '1'},
+    { name: 'Name 3', genre: 'Genre 1', id: '3', authorId: '2'},
+    { name: 'Name 4', genre: 'Genre 3', id: '4', authorId: '3'},
+    { name: 'Name 5', genre: 'Genre 3', id: '5', authorId: '4'},
+    { name: 'Name 6', genre: 'Genre 3', id: '6', authorId: '3'},
+    { name: 'Name 7', genre: 'Genre 2', id: '7', authorId: '1'}
 ];
     
 const dummyAuthors = [
@@ -26,7 +26,7 @@ const authorType: GraphQLObjectType = new GraphQLObjectType({
         books: {
             type: new GraphQLList(bookType),
             resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
-                return dummyBooks.filter(book => book.authourId === source?.id);
+                return dummyBooks.filter(book => book.authorId === source?.id);
             }
         }
     })
@@ -41,10 +41,44 @@ const bookType: GraphQLObjectType = new GraphQLObjectType({
         author: {
             type: authorType,
             resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
-                return dummyAuthors.find(author => author.id === source?.authourId);
+                return dummyAuthors.find(author => author.id === source?.authorId);
             }
         }
     })
+});
+
+const mutation: GraphQLObjectType = new GraphQLObjectType({
+    name: 'mutation',
+    fields: {
+        addAuthor: {
+            type: authorType,
+            args: { 
+                name: { type: GraphQLString },
+                age: { type: GraphQLInt }
+            },
+            resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
+                const newAuthor = {id: (dummyAuthors.length + 1).toString(), name: args.name, age: args.age };
+                dummyAuthors.push(newAuthor);
+                return newAuthor;
+            }
+        },
+        addBook: {
+            type: bookType,
+            args: {
+                name: { type: GraphQLString },
+                genre: { type: GraphQLString },
+                authorId: { type: GraphQLID }
+            },
+            resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
+                if (dummyAuthors.find(author => author.id === args?.authorId) === undefined) {
+                    throw new Error('Invalid author id')
+                }                
+                const newBook = {id: (dummyBooks.length + 1).toString(), name: args.name, genre: args.genre, authorId: args.authorId };
+                dummyBooks.push(newBook);
+                return newBook;
+            }
+        }
+    }
 });
 
 
@@ -59,22 +93,36 @@ const rootQuery = new GraphQLObjectType({
             }
         },
         books: {
-            type!: new GraphQLList(bookType),
+            type: new GraphQLList(bookType),
             args: { nameLike: { type: GraphQLString, description: 'Search books with a name like the specified (upper / lower case sensitive)' }},
             resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
-                return dummyBooks.filter(book => book?.name?.includes(args.nameLike)) ?? [];
+                if (args?.nameLike) {
+                    return dummyBooks.filter(book => book?.name?.includes(args.nameLike)) ?? [];
+                }
+                return dummyBooks;
             }            
         },
         author: {
             type: authorType,
             args: { id: { type: GraphQLID, description: 'Id of the author to retrieve' }},
             resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
-                return dummyBooks.find(author => author.id === args?.id);
+                return dummyAuthors.find(author => author.id === args.id);
             }
-        }
+        },
+        authors: {
+            type: new GraphQLList(authorType),
+            args: { nameLike: { type: GraphQLString, description: 'Search authors with a name like the specified (upper / lower case sensitive)' }},
+            resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
+                if (args?.nameLike) {
+                    return dummyAuthors.filter(author => author?.name?.includes(args.nameLike)) ?? [];
+                }
+                return dummyAuthors;
+            }            
+        }        
     }
 });
 
 export const schema = new GraphQLSchema({
-    query: rootQuery
+    query: rootQuery,
+    mutation: mutation
 });
