@@ -53,14 +53,21 @@ const rootQuery = new GraphQLObjectType({
     fields: {
         book: {  // The name is important because it can be pluralized for the queries, is the parameter used on it
             type: bookType,
-            args: { id: { type: GraphQLID }},
+            args: { id: { type: GraphQLID, description: 'Id of the book to retrieve' }},
             resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
                 return dummyBooks.find(book => book.id === args?.id);
             }
         },
+        books: {
+            type!: new GraphQLList(bookType),
+            args: { nameLike: { type: GraphQLString, description: 'Search books with a name like the specified (upper / lower case sensitive)' }},
+            resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
+                return dummyBooks.filter(book => book?.name?.includes(args.nameLike)) ?? [];
+            }            
+        },
         author: {
             type: authorType,
-            args: { id: { type: GraphQLID }},
+            args: { id: { type: GraphQLID, description: 'Id of the author to retrieve' }},
             resolve(source: any, args: { [argName: string]: any; }, context: any, info: GraphQLResolveInfo) {
                 return dummyBooks.find(author => author.id === args?.id);
             }
